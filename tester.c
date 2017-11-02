@@ -4,11 +4,11 @@
  *	@brief Limb Load Monitor Tester, using the wiiuse API.
  *
  */
-
+#include <Python/Python.h>
 #include "wiiuse.h" /* for wiimote_t, classic_ctrl_t, etc */
 #include <stdio.h>  /* for printf */
 
-#define MAX_WIIMOTES 1
+#define MAX_WIIMOTES 4
 
 float kgTolbs = 2.20462;
 
@@ -21,19 +21,20 @@ float kgTolbs = 2.20462;
  *	event occurs on the specified wiimote.
  */
 void handle_event(struct wiimote_t *wm) {
-  // printf("\n\n--- EVENT [id %i] ---\n", wm->unid);
-  struct wii_board_t *wb = (wii_board_t *)&wm->exp.wb;
-  float total = wb->tl + wb->tr + wb->bl + wb->br;
-  float left = wb->tl + wb->bl;
-  float right = wb->tr + wb->br;
-  float x = ((wb->tr + wb->br) / total) * 2 - 1;
-  float y = ((wb->tl + wb->tr) / total) * 2 - 1;
-  printf("Weight: %f kg @ (%f, %f)\n", total * kgTolbs, x, y);
-  printf("Left: %f kg, Right: %f kg\n", left * kgTolbs, right * kgTolbs);
-  printf("Interpolated weight: TL:%f  TR:%f  BL:%f  BR:%f\n", wb->tl, wb->tr,
-         wb->bl, wb->br);
-  printf("Raw: TL:%d  TR:%d  BL:%d  BR:%d\n", wb->rtl, wb->rtr, wb->rbl,
-         wb->rbr);
+  if (wm->exp.type == EXP_WII_BOARD) {
+    // printf("\n\n--- EVENT [id %i] ---\n", wm->unid);
+    struct wii_board_t *wb = (wii_board_t *)&wm->exp.wb;
+    float tl = wb->tl * kgTolbs;
+    float tr = wb->tr * kgTolbs;
+    float bl = wb->bl * kgTolbs;
+    float br = (wb->br - 2.5) * kgTolbs;
+
+    // calculate derived variables
+    float total = tl + tr + bl + br;
+    float left = tl + bl;
+    float right = tr + br;
+    printf("data,%f,%f,%f\n", total, left, right);
+  }
 }
 
 /**
@@ -207,6 +208,56 @@ int main(int argc, char **argv) {
         case WIIUSE_UNEXPECTED_DISCONNECT:
           /* the wiimote disconnected */
           handle_disconnect(wiimotes[i]);
+          break;
+
+        case WIIUSE_READ_DATA:
+          /*
+           *	Data we requested to read was returned.
+           *	Take a look at wiimotes[i]->read_req
+           *	for the data.
+           */
+          break;
+
+        case WIIUSE_NUNCHUK_INSERTED:
+          /*
+           *	a nunchuk was inserted
+           *	This is a good place to set any nunchuk specific
+           *	threshold values.  By default they are the same
+           *	as the wiimote.
+           */
+          /* wiiuse_set_nunchuk_orient_threshold((struct
+           * nunchuk_t*)&wiimotes[i]->exp.nunchuk, 90.0f); */
+          /* wiiuse_set_nunchuk_accel_threshold((struct
+           * nunchuk_t*)&wiimotes[i]->exp.nunchuk, 100); */
+          printf("Nunchuk inserted.\n");
+          break;
+
+        case WIIUSE_CLASSIC_CTRL_INSERTED:
+          printf("Classic controller inserted.\n");
+          break;
+
+        case WIIUSE_WII_BOARD_CTRL_INSERTED:
+          printf("Balance board controller inserted.\n");
+          break;
+
+        case WIIUSE_GUITAR_HERO_3_CTRL_INSERTED:
+          /* some expansion was inserted */
+          handle_ctrl_status(wiimotes[i]);
+          printf("Guitar Hero 3 controller inserted.\n");
+          break;
+
+        case WIIUSE_MOTION_PLUS_ACTIVATED:
+          printf("Motion+ was activated\n");
+          break;
+
+        case WIIUSE_NUNCHUK_REMOVED:
+        case WIIUSE_CLASSIC_CTRL_REMOVED:
+        case WIIUSE_GUITAR_HERO_3_CTRL_REMOVED:
+        case WIIUSE_WII_BOARD_CTRL_REMOVED:
+        case WIIUSE_MOTION_PLUS_REMOVED:
+          /* some expansion was removed */
+          handle_ctrl_status(wiimotes[i]);
+          printf("An expansion was removed.\n");
           break;
 
         default:
