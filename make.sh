@@ -2,5 +2,5 @@
 export LIBRARY_PATH+=/usr/local/lib
 cd build
 make
-cp llmtester ..
-./llmtester
+cp llmtester.o ..
+./llmtester.o
