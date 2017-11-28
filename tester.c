@@ -27,7 +27,7 @@ void handle_event(struct wiimote_t *wm) {
     float tl = wb->tl * kgTolbs;
     float tr = wb->tr * kgTolbs;
     float bl = wb->bl * kgTolbs;
-    float br = (wb->br - 2.5) * kgTolbs;
+    float br = (wb->br - 1.9) * kgTolbs;
 
     // calculate derived variables
     float total = tl + tr + bl + br;
@@ -110,11 +110,6 @@ short any_wiimote_connected(wiimote **wm, int wiimotes) {
  */
 // ==========================================================================
 int main(int argc, char **argv) {
-
-  // print initialization text
-  printf("=================================\n");
-  printf("| Limb Load Monitor Tester v0.1 |\n");
-  printf("=================================\n");
 
   wiimote **wiimotes;
   int found, connected;
